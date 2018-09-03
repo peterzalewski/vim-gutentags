@@ -14,6 +14,8 @@ let g:gutentags_ctags_post_process_cmd = get(g:, 'gutentags_ctags_post_process_c
 let g:gutentags_ctags_exclude = get(g:, 'gutentags_ctags_exclude', [])
 let g:gutentags_ctags_exclude_wildignore = get(g:, 'gutentags_ctags_exclude_wildignore', 1)
 
+let g:gutentags_ctags_language_specific = get(g:, 'gutentags_ctags_language_specific', 0)
+
 " Backwards compatibility.
 function! s:_handleOldOptions() abort
     let l:renamed_options = {
@@ -44,7 +46,7 @@ function! gutentags#ctags#init(project_root) abort
     " Check the old name for this option, too, before falling back to the
     " globally defined name.
     let l:tagfile = getbufvar("", 'gutentags_ctags_tagfile',
-                \getbufvar("", 'gutentags_tagfile', 
+                \getbufvar("", 'gutentags_tagfile',
                 \g:gutentags_ctags_tagfile))
     let b:gutentags_files['ctags'] = gutentags#get_cachefile(
                 \a:project_root, l:tagfile)
@@ -90,7 +92,7 @@ function! gutentags#ctags#generate(proj_dir, tags_file, gen_opts) abort
         "
         " Note that if we don't do this and pass a full path for the project
         " root, some `ctags` implementations like Exhuberant Ctags can get
-        " confused if the paths have spaces -- but not if you're *in* the root 
+        " confused if the paths have spaces -- but not if you're *in* the root
         " directory, for some reason... (which we are, our caller in
         " `autoload/gutentags.vim` changed it).
         let l:actual_proj_dir = '.'
@@ -157,6 +159,9 @@ function! gutentags#ctags#generate(proj_dir, tags_file, gen_opts) abort
     if g:gutentags_pause_after_update
         let l:cmd += ['-c']
     endif
+    if g:gutentags_ctags_language_specific && strlen(&l:filetype) ># 0
+        let l:cmd += ['-O', '--languages=' . &l:filetype]
+    endif
     if g:gutentags_trace
         let l:cmd += ['-l', '"' . l:actual_tags_file . '.log"']
     endif
@@ -165,7 +170,7 @@ function! gutentags#ctags#generate(proj_dir, tags_file, gen_opts) abort
     call gutentags#trace("Running: " . string(l:cmd))
     call gutentags#trace("In:      " . getcwd())
     if !g:gutentags_fake
-		let l:job_opts = gutentags#build_default_job_options('ctags')
+        let l:job_opts = gutentags#build_default_job_options('ctags')
         let l:job = gutentags#start_job(l:cmd, l:job_opts)
         call gutentags#add_job('ctags', a:tags_file, l:job)
     else
